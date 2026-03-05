@@ -188,12 +188,14 @@ def start_job():
 
         # Validate required columns
         df.columns = [c.lower().strip().replace(' ', '_') for c in df.columns]
-        required_cols = ['email', 'first_name', 'last_name', 'company_name']
-        missing = [c for c in required_cols if c not in df.columns]
+        required_cols = ['email']
+        optional_cols = ['first_name', 'last_name', 'company_name']
+        all_known_cols = required_cols + optional_cols
+        missing = [c for c in all_known_cols if c not in df.columns]
         if missing:
             # Try fuzzy matching
             col_map = {}
-            for req in required_cols:
+            for req in all_known_cols:
                 for col in df.columns:
                     if req.replace('_', '') in col.replace('_', '').replace(' ', ''):
                         col_map[col] = req
@@ -207,7 +209,9 @@ def start_job():
                 'error': f'Missing required columns: {missing}. Found columns: {list(df.columns)}'
             }), 400
 
-        contacts = df[required_cols].to_dict('records')
+        # Include email plus any optional cols that are present
+        cols_to_use = [c for c in all_known_cols if c in df.columns]
+        contacts = df[cols_to_use].to_dict('records')
 
         # Create job
         job_id = str(uuid.uuid4())
