@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Enrichr — AI Contact Enrichment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c27;
+      --border: #2a2a3d;
+      --accent: #6c63ff;
+      --accent2: #ff6b6b;
+      --accent3: #00d9a3;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --success: #00d9a3;
+      --error: #ff6b6b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 40px;
+    }
+
+    .step {
+      flex: 1;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .step:first-child { border-radius: 12px 0 0 12px; }
+    .step:last-child { border-radius: 0 12px 12px 0; }
+    .step + .step { border-left: none; }
+
+    .step-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .step-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .step.active { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+    .step.active .step-num { color: var(--accent3); }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover { border-color: rgba(108,99,255,0.4); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .card-icon.purple { background: rgba(108,99,255,0.2); }
+    .card-icon.green { background: rgba(0,217,163,0.2); }
+    .card-icon.red { background: rgba(255,107,107,0.2); }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .card-subtitle {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-top: 2px;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.05);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon { font-size: 2rem; margin-bottom: 12px; }
+
+    .upload-text {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .upload-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    .upload-success {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(0,217,163,0.1);
+      border: 1px solid rgba(0,217,163,0.3);
+      border-radius: 8px;
+      margin-top: 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--accent3);
+    }
+
+    /* Fields */
+    .fields-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .field-num {
+      grid-column: 1 / -1;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      margin-bottom: -4px;
+    }
+
+    /* Inputs */
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s;
+      resize: vertical;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+    }
+
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+
+    textarea { min-height: 60px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    .btn-danger {
+      background: rgba(255,107,107,0.1);
+      color: var(--error);
+      border: 1px solid rgba(255,107,107,0.2);
+      padding: 8px 10px;
+    }
+
+    .btn-danger:hover { background: rgba(255,107,107,0.2); }
+
+    .btn-add {
+      background: rgba(108,99,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(108,99,255,0.3);
+    }
+
+    .btn-add:hover { background: rgba(108,99,255,0.2); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #9c8fff);
+      color: white;
+      padding: 14px 28px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(108,99,255,0.45);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, var(--accent3), #00b87a);
+      color: #0a0a0f;
+      padding: 14px 28px;
+      font-size: 0.95rem;
+      border-radius: 10px;
+      font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0,217,163,0.3);
+    }
+
+    .btn-download:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(0,217,163,0.45);
+    }
+
+    /* Progress section */
+    #progress-section {
+      display: none;
+    }
+
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar-track {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 20px 0 12px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+      border-radius: 99px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(255,255,255,0.8);
+    }
+
+    .progress-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+
+    .status-message {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .status-message.success { border-left-color: var(--accent3); color: var(--accent3); }
+    .status-message.error { border-left-color: var(--error); color: var(--error); }
+
+    .pulse-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: var(--accent3);
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-running { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .badge-complete { background: rgba(0,217,163,0.15); color: var(--accent3); }
+    .badge-error { background: rgba(255,107,107,0.15); color: var(--error); }
+
+    /* Download section */
+    #download-section { display: none; text-align: center; padding: 12px 0; }
+
+    .download-banner {
+      background: linear-gradient(135deg, rgba(0,217,163,0.1), rgba(108,99,255,0.1));
+      border: 1px solid rgba(0,217,163,0.3);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .download-banner h3 { font-size: 1.3rem; margin-bottom: 8px; }
+    .download-banner p { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.82rem; margin-bottom: 24px; }
+
+    .error-section {
+      display: none;
+      background: rgba(255,107,107,0.08);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+
+    /* Utility */
+    .flex { display: flex; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .mt-4 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 8px; }
+    .text-muted { color: var(--muted); font-size: 0.82rem; font-family: 'DM Mono', monospace; }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-mark">⚡</div>
+      <div>
+        <h1>Enrichr</h1>
+      </div>
+    </div>
+    <p class="tagline">// AI-powered contact enrichment · powered by Claude</p>
+  </header>
+
+  <!-- Steps indicator -->
+  <div class="steps" id="steps-bar">
+    <div class="step active" id="step-1">
+      <div class="step-num">01</div>
+      <div class="step-title">Upload Contacts</div>
+    </div>
+    <div class="step" id="step-2">
+      <div class="step-num">02</div>
+      <div class="step-title">Define Fields</div>
+    </div>
+    <div class="step" id="step-3">
+      <div class="step-num">03</div>
+      <div class="step-title">Enrich</div>
+    </div>
+    <div class="step" id="step-4">
+      <div class="step-num">04</div>
+      <div class="step-title">Download</div>
+    </div>
+  </div>
+
+  <!-- Upload form section -->
+  <div id="form-section">
+
+    <!-- File upload -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon purple">📁</div>
+        <div>
+          <div class="card-title">Upload Contact List</div>
+          <div class="card-subtitle">CSV or Excel — must include email, first_name, last_name, company_name</div>
+        </div>
+      </div>
+
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" />
+        <div class="upload-icon">🗂</div>
+        <div class="upload-text">Drop your file here or click to browse</div>
+        <div class="upload-hint">Supports .csv, .xlsx, .xls</div>
+      </div>
+
+      <div class="upload-success" id="upload-success">
+        <span>✅</span>
+        <span id="upload-filename">file.csv loaded</span>
+        <span id="upload-rowcount" style="margin-left:auto; color: var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- Enrichment fields -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon green">🔬</div>
+        <div>
+          <div class="card-title">Enrichment Fields</div>
+          <div class="card-subtitle">Define what data you want Claude to research for each contact</div>
+        </div>
+      </div>
+
+      <div class="fields-list" id="fields-list"></div>
+
+      <button class="btn btn-add" onclick="addField()">
+        <span>＋</span> Add Field
+      </button>
+
+      <div class="mt-4 text-muted">
+        💡 Be specific in the description — e.g. "LinkedIn job title as it appears on their profile, max 5 words"
+      </div>
+    </div>
+
+    <!-- Launch -->
+    <div class="flex items-center justify-between" style="padding: 8px 0 40px;">
+      <div class="text-muted" id="launch-hint">Upload a file and add at least one field to begin.</div>
+      <button class="btn btn-primary" id="launch-btn" onclick="startEnrichment()" disabled>
+        🚀 Start Enrichment
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Progress section -->
+  <div id="progress-section">
+    <div class="progress-card">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:700;">Enrichment in Progress</h3>
+          <div class="text-muted" style="margin-top:4px;">Running in the background — safe to close this tab</div>
+        </div>
+        <span class="badge badge-running" id="status-badge">
+          <span class="pulse-dot"></span> RUNNING
+        </span>
+      </div>
+
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+      </div>
+
+      <div class="flex items-center justify-between" style="font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--muted);">
+        <span id="progress-label">0 / 0 tasks</span>
+        <span id="progress-pct" style="font-weight:600; color:var(--accent)">0%</span>
+      </div>
+
+      <div class="progress-stats">
+        <div class="stat">
+          <div class="stat-value" id="stat-contacts">0</div>
+          <div class="stat-label">CONTACTS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-fields">0</div>
+          <div class="stat-label">FIELDS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-pct">0%</div>
+          <div class="stat-label">COMPLETE</div>
+        </div>
+      </div>
+
+      <div class="status-message mt-4" id="status-msg">Initialising...</div>
+    </div>
+
+    <div id="download-section">
+      <div class="download-banner">
+        <div style="font-size:3rem; margin-bottom:12px;">✅</div>
+        <h3>Enrichment Complete!</h3>
+        <p>Your enriched contact list is ready. Click below to download.</p>
+        <button class="btn btn-download" onclick="downloadFile()">
+          ⬇ Download Enriched Excel
+        </button>
+      </div>
+    </div>
+
+    <div class="error-section" id="error-section">
+      <h4 style="color:var(--error); margin-bottom:8px;">⚠️ Error</h4>
+      <p class="text-muted" id="error-msg"></p>
+      <button class="btn btn-ghost mt-4" onclick="resetApp()">← Start Over</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentJobId = null;
+  let pollInterval = null;
+  let fieldCount = 0;
+  let uploadedFile = null;
+
+  // Restore job from localStorage on page load
+  window.addEventListener('load', () => {
+    addField(); // Add one default field
+    const savedJobId = localStorage.getItem('enrichr_job_id');
+    if (savedJobId) {
+      currentJobId = savedJobId;
+      showProgressSection();
+      startPolling();
+    }
+
+    // Drag and drop
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFileSelect(file);
+    });
+
+    document.getElementById('file-input').addEventListener('change', e => {
+      if (e.target.files[0]) handleFileSelect(e.target.files[0]);
+    });
+  });
+
+  function handleFileSelect(file) {
+    uploadedFile = file;
+    document.getElementById('upload-success').style.display = 'flex';
+    document.getElementById('upload-filename').textContent = file.name;
+    document.getElementById('upload-rowcount').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    checkLaunchReady();
+  }
+
+  function addField() {
+    fieldCount++;
+    const list = document.getElementById('fields-list');
+    const div = document.createElement('div');
+    div.className = 'field-row';
+    div.id = `field-${fieldCount}`;
+    div.innerHTML = `
+      <div class="field-num">FIELD ${String(fieldCount).padStart(2,'0')}</div>
+      <input type="text" placeholder="Field name (e.g. Job Title)" id="fname-${fieldCount}" oninput="checkLaunchReady()" />
+      <textarea placeholder="Description / research instructions (e.g. Current job title from LinkedIn)" id="fdesc-${fieldCount}" rows="2" oninput="checkLaunchReady()"></textarea>
+      <button class="btn btn-danger" onclick="removeField(${fieldCount})" title="Remove">✕</button>
+    `;
+    list.appendChild(div);
+    checkLaunchReady();
+  }
+
+  function removeField(id) {
+    const el = document.getElementById(`field-${id}`);
+    if (el) el.remove();
+    checkLaunchReady();
+  }
+
+  function getFields() {
+    const fields = [];
+    document.querySelectorAll('.field-row').forEach(row => {
+      const id = row.id.replace('field-', '');
+      const name = document.getElementById(`fname-${id}`)?.value?.trim();
+      const desc = document.getElementById(`fdesc-${id}`)?.value?.trim();
+      if (name && desc) fields.push({ name, description: desc });
+    });
+    return fields;
+  }
+
+  function checkLaunchReady() {
+    const hasFile = !!uploadedFile;
+    const fields = getFields();
+    const btn = document.getElementById('launch-btn');
+    const hint = document.getElementById('launch-hint');
+
+    if (hasFile && fields.length > 0) {
+      btn.disabled = false;
+      hint.textContent = `Ready: ${fields.length} field(s) × ${uploadedFile.name}`;
+    } else {
+      btn.disabled = true;
+      if (!hasFile && fields.length === 0) hint.textContent = 'Upload a file and add at least one field to begin.';
+      else if (!hasFile) hint.textContent = 'Upload a contact file to begin.';
+      else hint.textContent = 'Add at least one enrichment field.';
+    }
+  }
+
+  async function startEnrichment() {
+    const fields = getFields();
+    if (!uploadedFile || fields.length === 0) return;
+
+    const btn = document.getElementById('launch-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Uploading...';
+
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
+    formData.append('fields', JSON.stringify(fields));
+
+    try {
+      const res = await fetch('/api/start', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert('Error: ' + (data.error || 'Unknown error'));
+        btn.disabled = false;
+        btn.textContent = '🚀 Start Enrichment';
+        return;
+      }
+
+      currentJobId = data.job_id;
+      localStorage.setItem('enrichr_job_id', currentJobId);
+
+      // Store metadata for display
+      document.getElementById('stat-contacts').textContent = fields.length > 0 ? '...' : '0';
+      document.getElementById('stat-fields').textContent = fields.length;
+
+      showProgressSection();
+      startPolling();
+
+    } catch (err) {
+      alert('Network error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = '🚀 Start Enrichment';
+    }
+  }
+
+  function showProgressSection() {
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'block';
+    setStep(3);
+  }
+
+  function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollStatus();
+    pollInterval = setInterval(pollStatus, 2500);
+  }
+
+  async function pollStatus() {
+    if (!currentJobId) return;
+    try {
+      const res = await fetch(`/api/status/${currentJobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+      updateProgressUI(job);
+
+      if (job.status === 'complete' || job.status === 'error') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    } catch (e) {
+      console.error('Poll error:', e);
+    }
+  }
+
+  function updateProgressUI(job) {
+    const pct = job.progress_pct || 0;
+    const completed = job.completed || 0;
+    const total = job.total || 0;
+
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = `${completed} / ${total} tasks`;
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('stat-pct').textContent = pct + '%';
+    document.getElementById('stat-contacts').textContent = job.contact_count || '—';
+    document.getElementById('stat-fields').textContent = job.field_count || '—';
+
+    const msgEl = document.getElementById('status-msg');
+    const badgeEl = document.getElementById('status-badge');
+
+    if (job.status === 'complete') {
+      setStep(4);
+      msgEl.textContent = job.message;
+      msgEl.className = 'status-message success mt-4';
+      badgeEl.className = 'badge badge-complete';
+      badgeEl.innerHTML = '✅ COMPLETE';
+      document.getElementById('download-section').style.display = 'block';
+      localStorage.removeItem('enrichr_job_id');
+
+    } else if (job.status === 'error') {
+      msgEl.textContent = job.message;
+      msgEl.className = 'status-message error mt-4';
+      badgeEl.className = 'badge badge-error';
+      badgeEl.innerHTML = '⚠️ ERROR';
+      document.getElementById('error-section').style.display = 'block';
+      document.getElementById('error-msg').textContent = job.error || job.message;
+      localStorage.removeItem('enrichr_job_id');
+
+    } else {
+      msgEl.innerHTML = `<span class="pulse-dot"></span>${job.message || 'Processing...'}`;
+    }
+  }
+
+  async function downloadFile() {
+    if (!currentJobId) return;
+    window.location.href = `/api/download/${currentJobId}`;
+  }
+
+  function resetApp() {
+    localStorage.removeItem('enrichr_job_id');
+    currentJobId = null;
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('download-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+    document.getElementById('upload-success').style.display = 'none';
+    uploadedFile = null;
+    document.getElementById('file-input').value = '';
+    setStep(1);
+  }
+
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById(`step-${i}`).classList.toggle('active', i === n);
+    }
+  }
+</script>
+</body>
+</html>
